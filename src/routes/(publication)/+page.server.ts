@@ -11,7 +11,8 @@ export const actions: Actions = {
 	// the form, so a post to acme.com can't subscribe someone to globex.
 	default: async ({ locals, request }) => {
 		const publication = locals.publication!;
-		const email = String((await request.formData()).get('email') ?? '').trim();
+		const form = await request.formData();
+		const email = String(form.get('email') ?? '').trim();
 		if (!/^\S+@\S+\.\S+$/.test(email)) {
 			return fail(400, { email, message: 'Enter a valid email.' });
 		}

@@ -33,7 +33,8 @@ export function createProxyHeaders({ token, proxyProtocol = 'https' }: Options) 
 		}
 
 		const given = req.headers['x-saas-domains-auth-token'];
-		if (typeof servedFor !== 'string' || typeof given !== 'string') return false;
+		if (typeof servedFor !== 'string') return false;
+		if (typeof given !== 'string') return false;
 		if (!secureCompare(given, token)) return false;
 
 		req.headers.host = servedFor;

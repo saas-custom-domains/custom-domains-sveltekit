@@ -5,7 +5,8 @@ import type { RequestHandler } from './$types';
 
 // Events: https://docs.saascustomdomains.com/webhooks
 export const POST: RequestHandler = async ({ request, url }) => {
-	if (!secureCompare(url.searchParams.get('token'), SCD_WEBHOOK_TOKEN)) {
+	const token = url.searchParams.get('token');
+	if (!secureCompare(token, SCD_WEBHOOK_TOKEN)) {
 		return new Response('Unauthorized', { status: 401 });
 	}
 

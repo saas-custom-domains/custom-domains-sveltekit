@@ -20,21 +20,27 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return new Response('Forbidden', { status: 403 });
 	}
 
-	const isPublicationRoute = event.route.id?.startsWith('/(publication)') ?? false;
+	const route = event.route.id ?? '';
+	const isPublicationRoute = route.startsWith('/(publication)');
 
 	if (isAppHost(host)) {
 		// Publications are only reachable on their own domain.
 		if (!isPublicationRoute) return resolve(event);
 		if (event.url.pathname === '/') {
-			return new Response(null, { status: 303, headers: { location: '/dashboard' } });
+			return new Response(null, {
+				status: 303,
+				headers: { location: '/dashboard' }
+			});
 		}
 		return new Response('Not found', { status: 404 });
 	}
 
 	const publication = findPublicationByActiveHost(host);
-	if (!publication) return new Response('Unknown domain', { status: 404 });
+	if (!publication) {
+		return new Response('Unknown domain', { status: 404 });
+	}
 
-	// The dashboard and the API are only reachable on your own hosts.
+	// The dashboard and the API stay on your own hosts.
 	if (event.route.id && !isPublicationRoute) {
 		return new Response('Not found', { status: 404 });
 	}

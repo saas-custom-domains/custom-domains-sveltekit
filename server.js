@@ -16,7 +16,8 @@ const trustProxyHeaders = createProxyHeaders({
 
 const server = createServer((req, res) => {
 	if (!trustProxyHeaders(req)) {
-		res.writeHead(403, { 'content-type': 'text/plain' }).end('Forbidden');
+		res.writeHead(403, { 'content-type': 'text/plain' });
+		res.end('Forbidden');
 		return;
 	}
 	handler(req, res, () => res.writeHead(404).end('Not found'));

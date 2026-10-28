@@ -42,15 +42,17 @@ async function request<T>(method: string, path: string, body?: object): Promise<
 		body: body && JSON.stringify(body),
 		signal: AbortSignal.timeout(10_000)
 	});
-	if (!res.ok) throw new SaasDomainsError(res.status, await res.text());
+	if (!res.ok) {
+		throw new SaasDomainsError(res.status, await res.text());
+	}
 	return (await res.json()) as T;
 }
 
-export function createDomain(host: string, instructionsRecipient?: string) {
+export function createDomain(host: string, recipient?: string) {
 	return request<DomainResponse>('POST', '', {
 		host,
 		// We email this address the exact DNS records to add.
-		...(instructionsRecipient && { instructions_recipient: instructionsRecipient })
+		...(recipient && { instructions_recipient: recipient })
 	});
 }
 
