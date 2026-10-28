@@ -18,7 +18,6 @@
 		required
 		placeholder="you@example.com"
 		aria-label="Email"
-		value={form?.email ?? ''}
 	/>
 	<button>Subscribe</button>
 	{#if form?.message}
