@@ -24,12 +24,6 @@ export function findPublicationByActiveHost(host: string): Publication | null {
 	return (row as Publication | undefined) ?? null;
 }
 
-export function isActiveHost(host: string): boolean {
-	return Boolean(
-		db().prepare(`SELECT 1 FROM custom_domains WHERE host = ? AND status = 'active'`).get(host)
-	);
-}
-
 export function listPosts(publicationId: number): Post[] {
 	return db()
 		.prepare(

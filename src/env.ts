@@ -17,16 +17,6 @@ export const variables = defineEnvVars({
 		description: "Your own domain. Customers can't connect it or its subdomains",
 		schema: optional
 	},
-	DOMAINS_PROVIDER: {
-		description: '"saascustomdomains" (default) or "caddy" if you run your own proxy',
-		schema: (value) => {
-			const provider = value || 'saascustomdomains';
-			if (provider !== 'saascustomdomains' && provider !== 'caddy') {
-				throw new Error('DOMAINS_PROVIDER must be "saascustomdomains" or "caddy"');
-			}
-			return provider;
-		}
-	},
 	PROXY_AUTH_TOKEN: {
 		description: "The upstream's auth token, sent as X-SaaS-Domains-Auth-Token",
 		schema: optional
@@ -36,14 +26,6 @@ export const variables = defineEnvVars({
 	SCD_API_TOKEN: { schema: optional },
 	SCD_ACCOUNT_UUID: { schema: optional },
 	SCD_UPSTREAM_UUID: { schema: optional },
-	CNAME_TARGET: {
-		description: 'DOMAINS_PROVIDER=caddy only: what customers point a CNAME at',
-		schema: (value) => (value || 'in.inkletter.app').toLowerCase()
-	},
-	SERVER_IPS: {
-		description: 'DOMAINS_PROVIDER=caddy only: your proxy IPs, for root domains',
-		schema: list('')
-	},
 	DATABASE_PATH: {
 		description: 'SQLite file, or :memory:',
 		schema: (value) => value || 'data/app.db'

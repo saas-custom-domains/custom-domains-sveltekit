@@ -50,10 +50,14 @@ describe('createProxyHeaders', () => {
 		expect(behindLoadBalancer.headers['x-forwarded-proto']).toBe('https');
 	});
 
-	it('uses the configured protocol for proxied requests', () => {
-		const local = createProxyHeaders({ token: 'test_token', proxyProtocol: 'http' });
+	it("keeps the proxy's protocol, https if it sent none", () => {
+		const local = request({ ...proxied, 'x-forwarded-proto': 'http' });
+		trust(local);
+		expect(local.headers['x-forwarded-proto']).toBe('http');
+
 		const req = request({ ...proxied });
-		local(req);
-		expect(req.headers['x-forwarded-proto']).toBe('http');
+		delete req.headers['x-forwarded-proto'];
+		trust(req);
+		expect(req.headers['x-forwarded-proto']).toBe('https');
 	});
 });

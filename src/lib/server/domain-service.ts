@@ -1,6 +1,4 @@
-import { DOMAINS_PROVIDER } from '$app/env/private';
 import * as saasDomains from './saas-domains';
-import { pointsAtUs } from './dns-check';
 import {
 	type CustomDomain,
 	deleteDomain,
@@ -9,16 +7,12 @@ import {
 	setStatus
 } from './domains';
 
-const managed = DOMAINS_PROVIDER === 'saascustomdomains';
-
 export async function addDomain(
 	publicationId: number,
 	host: string,
 	dnsContact?: string
 ): Promise<CustomDomain> {
 	const domain = insertDomain(publicationId, host);
-	if (!managed) return domain;
-
 	try {
 		const res = await saasDomains.createDomain(host, dnsContact);
 		setProviderUuid(domain.id, res.uuid);
@@ -30,14 +24,11 @@ export async function addDomain(
 	}
 }
 
+// "Check DNS" in the dashboard. Webhooks usually get there first.
 export async function checkDomain(domain: CustomDomain): Promise<boolean> {
-	let valid: boolean;
-	if (managed && domain.provider_uuid) {
-		const res = await saasDomains.verifyDns(domain.provider_uuid);
-		valid = res.dns_status === 'valid';
-	} else {
-		valid = await pointsAtUs(domain.host);
-	}
+	if (!domain.provider_uuid) return false;
+	const res = await saasDomains.verifyDns(domain.provider_uuid);
+	const valid = res.dns_status === 'valid';
 	setStatus(domain.id, valid ? 'active' : 'pending');
 	return valid;
 }
@@ -45,7 +36,7 @@ export async function checkDomain(domain: CustomDomain): Promise<boolean> {
 export async function removeDomain(domain: CustomDomain) {
 	// Proxy first, database second: if the API call fails, the row is
 	// still here and the user can retry.
-	if (managed && domain.provider_uuid) {
+	if (domain.provider_uuid) {
 		await saasDomains.deleteDomain(domain.provider_uuid);
 	}
 	deleteDomain(domain.id);

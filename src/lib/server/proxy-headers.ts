@@ -5,9 +5,6 @@ type Options = {
 	// The upstream's auth token (PROXY_AUTH_TOKEN). If it's unset, every
 	// request with X-Served-For is refused.
 	token: string | undefined;
-	// What browsers use on customer domains: https in production.
-	// scd-mock serves plain HTTP, so compose.yaml sets it to http.
-	proxyProtocol?: string;
 };
 
 // Runs before SvelteKit sees the request (server.js in production, a
@@ -21,7 +18,7 @@ type Options = {
 // redirects and absolute URLs all use it.
 //
 // Returns false if the request must be refused.
-export function createProxyHeaders({ token, proxyProtocol = 'https' }: Options) {
+export function createProxyHeaders({ token }: Options) {
 	return (req: IncomingMessage): boolean => {
 		const servedFor = req.headers['x-served-for'];
 
@@ -38,7 +35,8 @@ export function createProxyHeaders({ token, proxyProtocol = 'https' }: Options) 
 		if (!secureCompare(given, token)) return false;
 
 		req.headers.host = servedFor;
-		req.headers['x-forwarded-proto'] = proxyProtocol;
+		// Always https from SaaS Custom Domains.
+		req.headers['x-forwarded-proto'] ??= 'https';
 		return true;
 	};
 }

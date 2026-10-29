@@ -10,8 +10,7 @@ process.env.PROTOCOL_HEADER = 'x-forwarded-proto';
 const { handler } = await import('./build/handler.js');
 
 const trustProxyHeaders = createProxyHeaders({
-	token: process.env.PROXY_AUTH_TOKEN,
-	proxyProtocol: process.env.PROXY_PROTOCOL
+	token: process.env.PROXY_AUTH_TOKEN
 });
 
 const server = createServer((req, res) => {

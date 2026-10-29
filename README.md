@@ -2,7 +2,7 @@
 
 An example SvelteKit 3 app where each customer connects their own domain. It's a small newsletter platform, Inkletter: every publication gets a home page, posts and a subscribe form, and its owner can serve it on `news.theircompany.com` instead of an Inkletter URL.
 
-It goes with the guide [How to Add Custom Domains to a SvelteKit App](https://saascustomdomains.com/blog/posts/custom-domains-sveltekit).
+It goes with the guide [How to Add Custom Domains to a Multi-Tenant SvelteKit App](https://saascustomdomains.com/blog/posts/custom-domains-sveltekit).
 
 What's in it:
 
@@ -10,7 +10,7 @@ What's in it:
 - Requests from the [SaaS Custom Domains](https://saascustomdomains.com) proxy are accepted only with the upstream's auth token, so nobody can claim a customer's domain by sending `X-Served-For` themselves.
 - Form actions work on custom domains, with SvelteKit's CSRF check left on (see [Form actions on customer domains](#form-actions-on-customer-domains)).
 - A dashboard to add a domain, check its DNS and remove it. Webhooks update the status.
-- Two ways to run HTTPS: SaaS Custom Domains (default), or your own Caddy with on-demand TLS.
+- [SaaS Custom Domains](https://saascustomdomains.com) issues and renews every customer's TLS certificate and proxies their traffic to the app.
 
 ## Run it in 2 minutes
 
@@ -30,17 +30,22 @@ docker compose up --build
 
 The mock is [scd-mock](https://github.com/saas-custom-domains/scd-mock): a local copy of the SaaS Custom Domains API and proxy, so you can try everything without an account.
 
-### Without Docker
+### Run the app outside Docker
+
+Keep the mock in Docker and point it at your dev server:
 
 ```bash
+SCD_MOCK_UPSTREAM_HOST=host.docker.internal \
+SCD_MOCK_WEBHOOK_URL=http://host.docker.internal:3000/api/webhooks/saascustomdomains \
+  docker compose up scd-mock -d
 npm install
 cp .env.example .env
-npm run dev
+npm run dev -- --host --port 3000
 ```
 
-Add a domain such as `acme.localhost` and open http://acme.localhost:5173. Without the mock, set `DOMAINS_PROVIDER=caddy` in `.env` so adding a domain doesn't call the API, then click **Check DNS**: `*.localhost` domains count as pointed at you.
+`--host` lets the mock's container reach Vite, and `vite.config.ts` allows the `host.docker.internal` hostname it arrives with. Add `acme.localhost` in the dashboard and open http://acme.localhost.
 
-Vite's dev server only answers for `localhost` and `*.localhost`. Any other domain gets "Blocked request. This host ("news.example.com") is not allowed."; add it to `server.allowedHosts` in `vite.config.ts` if you want to try a real domain in dev. Requests through the proxy aren't affected, because they arrive with your own hostname.
+Vite's dev server only answers for `localhost`, `*.localhost` and the hosts in `server.allowedHosts`. Any other domain gets "Blocked request. This host ("news.example.com") is not allowed."; requests through the proxy aren't affected, because they arrive with your own hostname.
 
 ## How it works
 
@@ -58,10 +63,9 @@ Browser ── acme.com ──▶ SaaS Custom Domains ──▶ server.js ──
 | `src/hooks.server.ts` | Picks the publication from `event.url`, keeps each host to its own routes |
 | `src/routes/(publication)/` | The customer's publication: home, posts, subscribe action |
 | `src/routes/dashboard/` | Add, check and remove domains |
-| `src/lib/server/domain-service.ts` | Add, check and remove domains with either provider |
+| `src/lib/server/domain-service.ts` | Add, check and remove domains |
 | `src/lib/server/saas-domains.ts` | API client for SaaS Custom Domains |
 | `src/routes/api/webhooks/saascustomdomains/+server.ts` | Webhook endpoint |
-| `src/routes/api/caddy/ask/+server.ts` | Caddy's on-demand TLS check |
 
 Publication pages live in the `(publication)` route group, so they share URLs with nothing else and `handle` can tell them apart by `event.route.id`. They're only served on an active custom domain; the dashboard and the API are only served on your own hosts.
 
@@ -89,25 +93,11 @@ If you'd rather receive the customer's domain in `X-Forwarded-Host`, SaaS Custom
 
 ### HTTP and HTTPS
 
-The origin SvelteKit compares includes the scheme, and adapter-node assumes `https` unless a protocol header says otherwise. `server.js` sets `PROTOCOL_HEADER=x-forwarded-proto`, and `proxy-headers.ts` fills that header in: requests from SaaS Custom Domains are always HTTPS, and direct requests keep what your load balancer reports (or `http` without one). scd-mock serves customer domains over plain HTTP, so `compose.yaml` sets `PROXY_PROTOCOL=http`. Leave it unset in production.
+The origin SvelteKit compares includes the scheme, and adapter-node assumes `https` unless a protocol header says otherwise. `server.js` sets `PROTOCOL_HEADER=x-forwarded-proto`, and `proxy-headers.ts` fills that header in: requests from SaaS Custom Domains keep the `https` the proxy sends, and direct requests keep what your load balancer reports (or `http` without one). scd-mock serves customer domains over plain HTTP, so `compose.yaml` sets `SCD_MOCK_FORWARDED_PROTO=http` on the mock to match.
 
 ### Don't prerender publication pages
 
 adapter-node serves prerendered pages as static files before `handle` runs, so a prerendered page would be the same on every domain. `(publication)/+layout.server.ts` sets `prerender = false` to make that explicit. If you turn it on, the build fails with ``Failed to prerender `/` `` (`404 GET /`), because at build time there's no customer domain.
-
-## Run your own proxy instead (Caddy)
-
-```bash
-DOMAINS_PROVIDER=caddy docker compose --profile diy up --build
-```
-
-Add `acme.localhost` in the dashboard, click **Check DNS**, then:
-
-```bash
-curl -k https://acme.localhost/
-```
-
-Caddy asks `/api/caddy/ask` before issuing a certificate, and only active domains get one. Caddy passes the visitor's `Host` through and sets `X-Forwarded-Proto: https`, so SvelteKit sees the customer's domain without any extra step. Locally it uses Caddy's internal CA, hence `-k`. In production you'd remove `internal` from the `Caddyfile`, run it on a server with a static IP, and then own certificate storage, renewals, rate limits and monitoring yourself.
 
 ## Use it with your SaaS Custom Domains account
 

@@ -6,7 +6,7 @@ import { createProxyHeaders } from './src/lib/server/proxy-headers.ts';
 // server.js does this in production. Same thing for `vite dev` and
 // `vite preview`, so requests through the proxy work there too.
 function proxyHeaders(token: string | undefined): Plugin {
-	const trustProxyHeaders = createProxyHeaders({ token, proxyProtocol: 'http' });
+	const trustProxyHeaders = createProxyHeaders({ token });
 	const middleware = (
 		req: Parameters<typeof trustProxyHeaders>[0],
 		res: import('node:http').ServerResponse,
@@ -34,6 +34,10 @@ export default defineConfig(({ mode }) => ({
 			adapter: adapter()
 		})
 	],
+	server: {
+		// scd-mock in Docker reaches `npm run dev` under this name.
+		allowedHosts: ['host.docker.internal']
+	},
 	test: {
 		expect: { requireAssertions: true },
 		// Settings for unit tests are in .env.test
